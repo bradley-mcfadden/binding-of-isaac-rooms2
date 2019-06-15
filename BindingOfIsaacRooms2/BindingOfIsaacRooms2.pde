@@ -5,7 +5,7 @@ int NUM_RECTS = 20;
 Random r;
 //int GRIDXS;
 //int GRIDYS;
-int CELL_SIZE = 6;
+int CELL_SIZE = 20;
 int time = 0;
 float avgTime = 0;
 int avgRooms = 0;
@@ -30,7 +30,7 @@ void setup(){
   cellys = height / cellcounth;
   r = new Random();
   generate();
-  connect();
+  connect2();
 }
 
 void draw(){
@@ -61,7 +61,7 @@ void keyReleased(){
   avgTime = time / (float)count;
   rooms += region.size();
   avgRooms = rooms / count;
-  println("Millis ("+(millis()-start)+") Rooms ("+region.size()+") Avg. Millis ("+nf(avgTime,3,2)+") Avg. Rooms ("+avgRooms+")"); 
+  // println("Millis ("+(millis()-start)+") Rooms ("+region.size()+") Avg. Millis ("+nf(avgTime,3,2)+") Avg. Rooms ("+avgRooms+")"); 
 }
 
 void mouseReleased(){
@@ -77,6 +77,7 @@ void generate(){
       Point p = new Point(i*(ROOMW+border), j*(ROOMH+border));
       region.add(new Rect(ROOMW,ROOMH,p));
     }
+    shuffleArrayList(region);
   }
     
   //for (int i = 0; i < region.size(); i++){
@@ -98,25 +99,59 @@ void generate(){
   //  else {}  
   //}
 }
-
+void connect2(){
+    matrix = new float[region.size()][region.size()];
+  //println("{");
+  for (int i = 0; i < matrix.length; i++){
+    Rect r = region.get(i);
+    for (int j = 0; j < matrix[i].length; j++){
+      if (i == j){
+        matrix[i][j] = Float.MAX_VALUE;
+      } else {
+        matrix[i][j] = r.distance(region.get(j)); 
+      }
+    }
+  }
+  int[][] aMatrix = new int [region.size()][region.size()];
+  int root = (int)(random(region.size()));
+  ArrayList<Integer> tree = new ArrayList<Integer>(region.size());
+  tree.add(root);
+  for (int x = 0; x < region.size()-1; x++){
+    UnsortedSet<Integer> neighbours = getNeighbours(aMatrix,matrix,tree);
+    if (neighbours != null){
+      int child = neighbours.grab();
+      int parent = -1;
+      for (int i = 0; i < tree.size(); i++){
+        if (matrix[child][tree.get(i)] == 5){
+          parent = tree.get(i);  
+          break;
+        }
+      }
+      Edge e = new Edge(region.get(child),region.get(parent));
+      aMatrix[child][parent] = 1;
+      aMatrix[parent][child] = 1;
+    }
+  }
+  
+  
+}
 void connect(){
   matrix = new float[region.size()][region.size()];
   //println("{");
   for (int i = 0; i < matrix.length; i++){
     Rect r = region.get(i);
     for (int j = 0; j < matrix[i].length; j++){
-      matrix[i][j] = r.distance(region.get(j)); 
-      if (matrix[i][j] == 0)
-        matrix[i][j] = Float.MAX_VALUE;
+        matrix[i][j] = r.distance(region.get(j)); 
     }
   }
+  printMatrix(matrix);
   edgeSet = new SimpleGraph(region.size());
   //Define some adjacency matrix
   int[][] aMatrix = new int[region.size()][region.size()];
   /*START KRUSKAL METHOD*/
   for (int i = 0; i < region.size()-1; i++){
     for (;;){
-    int[] minPos = kruskal(aMatrix, matrix);
+    int[] minPos = kruskal2(aMatrix, matrix);
       Edge e = new Edge(region.get(minPos[0]), region.get(minPos[1]));
       aMatrix[minPos[0]][minPos[1]] = 1;
       aMatrix[minPos[1]][minPos[0]] = 1;
@@ -187,6 +222,18 @@ int[] kruskal2(int[][] adj, float[][] weights){
   return minPos;
 }
 
+UnsortedSet<Integer> getNeighbours(int[][] adj, float[][] weights, ArrayList<Integer> tree){
+  UnsortedSet<Integer> neighbours = new UnsortedSet<Integer>();
+  for (int i = 0; i < tree.size(); i++){
+    for (int j = 0; j < weights[tree.get(i)].length; j++){
+      if (weights[tree.get(i)][j] == 5 && adj[tree.get(i)][j] == 0){
+        neighbours.add(j);
+      }
+    }
+  }
+  return neighbours;
+}
+
 //deprecated
 float[][] kthMinArray(float[] arr){
   float[][] arr2 = new float[arr.length][2];
@@ -236,6 +283,14 @@ boolean dfs(int vertex, UnsortedSet<Integer> visited, int parent, int[][] matrix
   return false;
 };
 
+void shuffleArrayList(ArrayList<Rect> r){
+  for(int i = 0; i < r.size(); i++){
+    Rect temp = r.get(i);
+    int toSwap = (int)random(i,r.size());
+    r.set(i,r.get(toSwap));
+    r.set(toSwap,temp);
+  }
+}
 
 void printArray(float[] arr){
   print("[");
@@ -254,6 +309,13 @@ void printArray(int[] arr){
 }
 
 void printMatrix(int[][] arr){
+  print("[");
+  for(int i = 0; i < arr.length; i++)
+    printArray(arr[i]);
+  println("]");
+}
+
+void printMatrix(float[][] arr){
   print("[");
   for(int i = 0; i < arr.length; i++)
     printArray(arr[i]);

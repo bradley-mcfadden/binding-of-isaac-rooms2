@@ -53,8 +53,23 @@ class Rect {
   }
   
   float distance (Rect r){
-    float deltax = (r.min.x + (r.xsize/2)) - (min.x+(xsize/2));
-    float deltay = (r.min.y + (r.ysize/2)) - (min.y+(ysize/2));
+    if (r.equals(this))
+      return Float.MAX_VALUE;
+    if (min.x == r.min.x){
+      if (min.y < r.min.y){
+        return r.min.y - max.y;  
+      } else if (min.y > r.min.y){
+        return min.y - r.max.y;
+      }
+    } else if (min.y == r.min.y){
+      if (min.x < r.min.x){
+        return r.min.x - max.x;
+      } else if (min.x > r.min.x){
+        return min.x - r.max.x;
+      }
+    }
+    float deltax = min.x+(xsize/2) - r.min.x+(r.xsize/2);
+    float deltay = min.y+(ysize/2) - r.min.y+(r.ysize/2);
     return (float)Math.sqrt((deltax*deltax)+(deltay*deltay));
   }
   

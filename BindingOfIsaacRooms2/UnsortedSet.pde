@@ -16,6 +16,21 @@ class UnsortedSet <T>{
     }
     return false;
   }
+  void remove(T t){
+    Object[] newArray = new Object[data.length];
+    for (int i = 0; i < manyItems;){
+      if (!((T)data[i]).equals(t)){
+        newArray[i] = data[i];  
+        i++;
+      }
+    }
+    manyItems--;
+  }
+  
+  T grab(){
+   int i = (int)(random(manyItems));
+   return (T)data[i];
+  }
   
   void add(T t){
     if (!contains(t)){
