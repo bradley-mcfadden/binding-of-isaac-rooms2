@@ -1,3 +1,7 @@
+/**
+  * Edge stores information about a connection between two Rect objects.
+  * Edge furthest from origin is always b.
+*/
 class Edge {
   Rect a;
   Rect b;
@@ -5,6 +9,11 @@ class Edge {
   int blue;
   int green;
 
+  /**
+    * Construct edge with two rectangles.
+    * @param a Arbitrary rectangle.
+    * @param b Arbitrary rectangle.
+  */
   Edge(Rect a, Rect b) {
     double magA = Math.sqrt((a.min.x*a.min.x)+(a.min.y*a.min.y));  
     double magB = Math.sqrt((b.min.x*b.min.x)+(b.min.y*b.min.y));  
@@ -20,20 +29,36 @@ class Edge {
     blue = r.nextInt(256);
   }
 
+  /**
+    * Copy constructor.
+    * @param e Edge to copy.
+  */
   Edge(Edge e) {
     this(e.a, e.b);
   }
 
+  /**
+    * Compare two edges.
+    * @param e Edge to compare against.
+    * @return Are these edges the same?
+  */
   boolean equals(Edge e) {
     if (a.equals(e.a) && b.equals(e.b))
       return true;
     return false;
   }
 
+  /**
+    * Returns coordinates of Rect objects.
+    * @return Description of edge.
+  */
   String toString() {
     return "("+a+", "+b+")";
   }
 
+  /**
+    * Draw a straight line between Rects.
+  */
   void display() {
     stroke(red, green, blue);
     strokeWeight(10);
@@ -41,10 +66,13 @@ class Edge {
       (b.min.x+(b.xsize/2))*CELL_SIZE, (b.min.y+(b.ysize/2))*CELL_SIZE);
   }
 
+  /**
+    * Draw many rectangles in a line between Rects.
+  */
   void display2() {
     float deltax = a.min.x - b.min.y;
-    float deltay = a.min.y - b.min.y;
-    float slope = deltay / deltax;
+    //float deltay = a.min.y - b.min.y;
+    //float slope = deltay / deltax;
     //print("Slope: " +slope);
     for (int i = 0; i < deltax; i++) {
       noStroke();
@@ -55,6 +83,9 @@ class Edge {
     }
   }
 
+  /**
+    *Draws an opposite side and an ajacent side between two Rects.
+  */
   void display3() {
     //int deltax = a.min.x + (a.xsize/2)+abs(a.min.x - b.min.x);
     //int deltay = a.min.y + (a.ysize/2)+abs(a.min.y - b.min.y);
