@@ -5,7 +5,8 @@ int NUM_RECTS = 20;
 Random r;
 //int GRIDXS;
 //int GRIDYS;
-int CELL_SIZE = 20;
+int CELL_SIZE = 4;
+float chancePerExtraEdge = 0.1;
 int time = 0;
 float avgTime = 0;
 int avgRooms = 0;
@@ -18,12 +19,13 @@ int cellys;
 int ROOMW = 15;
 int ROOMH = 10;
 int border = 5;
+int desiredRooms = 75;
 ArrayList<Rect> region;
 float[][] matrix;
 SimpleGraph edgeSet;
 
-void setup(){
-  size(1600,900);
+void setup() {
+  size(1600, 900);
   cellcountw = width / CELL_SIZE; //120
   cellcounth = height / CELL_SIZE;
   cellxs = width / cellcountw;
@@ -33,53 +35,53 @@ void setup(){
   connect2();
 }
 
-void draw(){
+void draw() {
   background(200);
-  
-  for (int i = 0; i < cellcountw; i++){
+
+  for (int i = 0; i < cellcountw; i++) {
     stroke(0);
     strokeWeight(3);
-    line((i * cellxs)+CELL_SIZE/2,0,(i * cellxs)+CELL_SIZE/2,height);
+    line((i * cellxs)+CELL_SIZE/2, 0, (i * cellxs)+CELL_SIZE/2, height);
   }
-  for (int i = 0; i < cellcounth; i++){
+  for (int i = 0; i < cellcounth; i++) {
     stroke(0);
     strokeWeight(3);
-    line(0,(i * cellys)+CELL_SIZE/2,width,(i * cellys)+CELL_SIZE/2);
+    line(0, (i * cellys)+CELL_SIZE/2, width, (i * cellys)+CELL_SIZE/2);
   }
   edgeSet.display();
-  for (Rect r: region)
+  for (Rect r : region)
     r.display();
 }
 
 //Generate4 a new room and log data
-void keyReleased(){
+void keyReleased() {
   count++;
   int start = millis();
   generate();
-  connect();
+  connect2();
   time += millis() - start;
   avgTime = time / (float)count;
   rooms += region.size();
   avgRooms = rooms / count;
-  // println("Millis ("+(millis()-start)+") Rooms ("+region.size()+") Avg. Millis ("+nf(avgTime,3,2)+") Avg. Rooms ("+avgRooms+")"); 
+  // println("Millis ("+(millis()-start)+") Rooms ("+region.size()+") Avg. Millis ("+nf(avgTime,3,2)+") Avg. Rooms ("+avgRooms+")");
 }
 
-void mouseReleased(){
-  saveFrame("Dungeon Generation.png");  
+void mouseReleased() {
+  saveFrame("Dungeon Generation.png");
 }
 
-void generate(){
+void generate() {
   region = new ArrayList<Rect>();
   int px = cellcountw/(ROOMW+border);
   int py = cellcounth/(ROOMH+border);
-  for (int i = 0; i  < px; i++){
-    for (int j = 0; j < py; j++){
+  for (int i = 0; i  < px; i++) {
+    for (int j = 0; j < py; j++) {
       Point p = new Point(i*(ROOMW+border), j*(ROOMH+border));
-      region.add(new Rect(ROOMW,ROOMH,p));
+      region.add(new Rect(ROOMW, ROOMH, p));
     }
     shuffleArrayList(region);
   }
-    
+
   //for (int i = 0; i < region.size(); i++){
   //  Rect current = region.get(i);
   //  for (int j = 0; j < region.size(); j++){
@@ -99,49 +101,99 @@ void generate(){
   //  else {}  
   //}
 }
-void connect2(){
-    matrix = new float[region.size()][region.size()];
+void connect2() {
+  matrix = new float[region.size()][region.size()];
   //println("{");
-  for (int i = 0; i < matrix.length; i++){
+  for (int i = 0; i < matrix.length; i++) {
     Rect r = region.get(i);
-    for (int j = 0; j < matrix[i].length; j++){
-      if (i == j){
+    for (int j = 0; j < matrix[i].length; j++) {
+      if (i == j) {
         matrix[i][j] = Float.MAX_VALUE;
       } else {
-        matrix[i][j] = r.distance(region.get(j)); 
+        matrix[i][j] = r.distance(region.get(j));
       }
     }
   }
-  int[][] aMatrix = new int [region.size()][region.size()];
+  int[][] aMatrix = new int[region.size()][region.size()];
   int root = (int)(random(region.size()));
   ArrayList<Integer> tree = new ArrayList<Integer>(region.size());
   tree.add(root);
-  for (int x = 0; x < region.size()-1; x++){
-    UnsortedSet<Integer> neighbours = getNeighbours(aMatrix,matrix,tree);
-    if (neighbours != null){
-      int child = neighbours.grab();
-      int parent = -1;
-      for (int i = 0; i < tree.size(); i++){
-        if (matrix[child][tree.get(i)] == 5){
-          parent = tree.get(i);  
+  edgeSet = new SimpleGraph(region.size());
+  //println(getNeighbours(aMatrix,matrix,tree).toString());
+  while (tree.size() < desiredRooms) {
+    println("Tree:"+tree);
+    UnsortedSet<Integer> neighbours = getNeighbours(aMatrix, matrix, tree);
+    println(neighbours.toString());
+    if (neighbours != null) {
+      for (int m = 0; m < neighbours.size(); m++) {
+        //int child = (int)neighbours.data[m];
+        int child = (int)neighbours.grab();
+        println("Child: " +child);
+        int parent = -1;
+        for (int i = 0; i < tree.size(); i++) {
+          if (matrix[child][tree.get(i)] == 5) {
+            parent = tree.get(i);  
+            aMatrix[child][parent] = 1;
+            aMatrix[parent][child] = 1;
+            if (!hasCycle(aMatrix)) {
+              Edge e = new Edge(region.get(child), region.get(parent));
+              edgeSet.add(e);
+              tree.add(child);
+              break;
+            } else {
+              aMatrix[child][parent] = 0;
+              aMatrix[parent][child] = 0;
+            }
+          }
+        }
+        if (parent >= 0) {
+          matrix[parent][child] = Float.MAX_VALUE;
+          matrix[child][parent] = Float.MAX_VALUE;
           break;
         }
       }
-      Edge e = new Edge(region.get(child),region.get(parent));
-      aMatrix[child][parent] = 1;
-      aMatrix[parent][child] = 1;
+    }
+  }
+  for (int i = 0; i < region.size(); i++) {
+    region.get(i).visited = true;
+    for (int j = 0; j < tree.size(); j++) {
+      if (i == tree.get(j)) {
+        region.get(i).visited = false;
+        break;
+      }
+    }
+  }
+  Iterator<Rect> it = region.iterator();
+  while (it.hasNext()) {
+    Rect r = it.next();
+    if (r.visited)
+      it.remove();  
+    else {
+    }
+  }
+  matrix = new float[region.size()][region.size()];
+  for (int i = 0; i < matrix.length; i++) {
+    Rect r = region.get(i);
+    for (int j = 0; j < matrix[i].length; j++) {
+      if (i == j) {
+        matrix[i][j] = Float.MAX_VALUE;
+      } else {
+        matrix[i][j] = r.distance(region.get(j));
+        if (matrix[i][j] == 5 && random(1) < chancePerExtraEdge){
+          edgeSet.add(new Edge(region.get(i),region.get(j)));  
+        }
+      }
     }
   }
   
-  
 }
-void connect(){
+void connect() {
   matrix = new float[region.size()][region.size()];
   //println("{");
-  for (int i = 0; i < matrix.length; i++){
+  for (int i = 0; i < matrix.length; i++) {
     Rect r = region.get(i);
-    for (int j = 0; j < matrix[i].length; j++){
-        matrix[i][j] = r.distance(region.get(j)); 
+    for (int j = 0; j < matrix[i].length; j++) {
+      matrix[i][j] = r.distance(region.get(j));
     }
   }
   printMatrix(matrix);
@@ -149,13 +201,13 @@ void connect(){
   //Define some adjacency matrix
   int[][] aMatrix = new int[region.size()][region.size()];
   /*START KRUSKAL METHOD*/
-  for (int i = 0; i < region.size()-1; i++){
-    for (;;){
-    int[] minPos = kruskal2(aMatrix, matrix);
+  for (int i = 0; i < region.size()-1; i++) {
+    for (;; ) {
+      int[] minPos = kruskal2(aMatrix, matrix);
       Edge e = new Edge(region.get(minPos[0]), region.get(minPos[1]));
       aMatrix[minPos[0]][minPos[1]] = 1;
       aMatrix[minPos[1]][minPos[0]] = 1;
-      if (!hasCycle(aMatrix)){
+      if (!hasCycle(aMatrix)) {
         edgeSet.add(e);
         break;
       } else {
@@ -170,13 +222,13 @@ void connect(){
 
 //Take in current adjacency matrix as well as weighted
 //matrix. Find min of weighted not in adjacency matrix 
-int[] kruskal(int[][] adj, float[][] weights){
+int[] kruskal(int[][] adj, float[][] weights) {
   int minI = 0;
   int minJ = 0;
-  for (int i = 0; i < weights.length; i++){
-    for (int j = i; j < weights[i].length; j++){
-      if (adj[i][j] == 0){
-        if (weights[i][j] < weights[minI][minJ]){
+  for (int i = 0; i < weights.length; i++) {
+    for (int j = i; j < weights[i].length; j++) {
+      if (adj[i][j] == 0) {
+        if (weights[i][j] < weights[minI][minJ]) {
           minI = i;
           minJ = j;
         }
@@ -191,30 +243,30 @@ int[] kruskal(int[][] adj, float[][] weights){
 
 //Take in current adjacency matrix as well as weighted
 //matrix. Find min of weighted not in adjacency matrix 
-int[] kruskal2(int[][] adj, float[][] weights){
+int[] kruskal2(int[][] adj, float[][] weights) {
   int minI = 0;
   int minJ = 0;
   ArrayList<int[]> mins = new ArrayList<int[]>();
-  for (int i = 0; i < weights.length; i++){
-    for (int j = i; j < weights[i].length; j++){
-      if (adj[i][j] == 0){
-        if (weights[i][j] < weights[minI][minJ]){
+  for (int i = 0; i < weights.length; i++) {
+    for (int j = i; j < weights[i].length; j++) {
+      if (adj[i][j] == 0) {
+        if (weights[i][j] < weights[minI][minJ]) {
           minI = i;
           minJ = j;
-        } 
+        }
       }
     }
   }
   int[] minPos = new int[2];
   minPos[0] = minI;
   minPos[1] = minJ;
-  for (int i = 0; i < weights.length; i++){
-    for (int j = i; j < weights[i].length; j++){
-      if (adj[i][j] == 0){
-        if (weights[i][j] == weights[minI][minJ]){
-          int[] temp = {i,j};
+  for (int i = 0; i < weights.length; i++) {
+    for (int j = i; j < weights[i].length; j++) {
+      if (adj[i][j] == 0) {
+        if (weights[i][j] == weights[minI][minJ]) {
+          int[] temp = {i, j};
           mins.add(temp);
-        } 
+        }
       }
     }
   }
@@ -222,11 +274,11 @@ int[] kruskal2(int[][] adj, float[][] weights){
   return minPos;
 }
 
-UnsortedSet<Integer> getNeighbours(int[][] adj, float[][] weights, ArrayList<Integer> tree){
+UnsortedSet<Integer> getNeighbours(int[][] adj, float[][] weights, ArrayList<Integer> tree) {
   UnsortedSet<Integer> neighbours = new UnsortedSet<Integer>();
-  for (int i = 0; i < tree.size(); i++){
-    for (int j = 0; j < weights[tree.get(i)].length; j++){
-      if (weights[tree.get(i)][j] == 5 && adj[tree.get(i)][j] == 0){
+  for (int i = 0; i < tree.size(); i++) {
+    for (int j = 0; j < weights[tree.get(i)].length; j++) {
+      if (weights[tree.get(i)][j] == 5 && adj[tree.get(i)][j] == 0) {
         neighbours.add(j);
       }
     }
@@ -235,43 +287,43 @@ UnsortedSet<Integer> getNeighbours(int[][] adj, float[][] weights, ArrayList<Int
 }
 
 //deprecated
-float[][] kthMinArray(float[] arr){
+float[][] kthMinArray(float[] arr) {
   float[][] arr2 = new float[arr.length][2];
-  for (int i = 0; i < arr2.length; i++){
+  for (int i = 0; i < arr2.length; i++) {
     arr2[i][0] = arr[i];
     arr2[i][1] = i;
   }
-  
-  for (int i = 0; i < arr2.length-1; i++){
-     // Find the minimum element in unsorted array 
-     int min_idx = i; 
-     for (int j = i+1; j < arr2.length; j++) 
-       if (arr2[j][0] < arr2[min_idx][0]) 
-         min_idx = j; 
-         // Swap the found minimum element with the first 
-         // element 
-            float[] temp = arr2[min_idx]; 
-            arr2[min_idx] = arr2[i]; 
-            arr2[i] = temp; 
+
+  for (int i = 0; i < arr2.length-1; i++) {
+    // Find the minimum element in unsorted array 
+    int min_idx = i; 
+    for (int j = i+1; j < arr2.length; j++) 
+      if (arr2[j][0] < arr2[min_idx][0]) 
+        min_idx = j; 
+    // Swap the found minimum element with the first 
+    // element 
+    float[] temp = arr2[min_idx]; 
+    arr2[min_idx] = arr2[i]; 
+    arr2[i] = temp;
   }
   return arr2;
 }
 
-boolean hasCycle(int matrix[][]){
+boolean hasCycle(int matrix[][]) {
   UnsortedSet<Integer> visited = new UnsortedSet<Integer>(matrix.length);
-  for (int i = 0; i < matrix.length; i++){
-    if(visited.contains(i))
+  for (int i = 0; i < matrix.length; i++) {
+    if (visited.contains(i))
       continue;
-    if(dfs(i, visited, -1, matrix))
+    if (dfs(i, visited, -1, matrix))
       return true;
   }
   return false;
 }
 
-boolean dfs(int vertex, UnsortedSet<Integer> visited, int parent, int[][] matrix){
+boolean dfs(int vertex, UnsortedSet<Integer> visited, int parent, int[][] matrix) {
   visited.add(vertex);
-  for (int i = 0; i < matrix.length; i++){
-    if (matrix[vertex][i] == 1){
+  for (int i = 0; i < matrix.length; i++) {
+    if (matrix[vertex][i] == 1) {
       if (i == parent)
         continue;
       if (visited.contains(i))
@@ -283,41 +335,41 @@ boolean dfs(int vertex, UnsortedSet<Integer> visited, int parent, int[][] matrix
   return false;
 };
 
-void shuffleArrayList(ArrayList<Rect> r){
-  for(int i = 0; i < r.size(); i++){
+void shuffleArrayList(ArrayList<Rect> r) {
+  for (int i = 0; i < r.size(); i++) {
     Rect temp = r.get(i);
-    int toSwap = (int)random(i,r.size());
-    r.set(i,r.get(toSwap));
-    r.set(toSwap,temp);
+    int toSwap = (int)random(i, r.size());
+    r.set(i, r.get(toSwap));
+    r.set(toSwap, temp);
   }
 }
 
-void printArray(float[] arr){
+void printArray(float[] arr) {
   print("[");
-  for (int i = 0; i < arr.length-1; i++){
+  for (int i = 0; i < arr.length-1; i++) {
     print(round(arr[i])+", ");
   }
   println(round(arr[arr.length-1])+"]");
 }
 
-void printArray(int[] arr){
+void printArray(int[] arr) {
   print("[");
-  for (int i = 0; i < arr.length; i++){
+  for (int i = 0; i < arr.length; i++) {
     print(arr[i]+", ");
   }
   println("]");
 }
 
-void printMatrix(int[][] arr){
+void printMatrix(int[][] arr) {
   print("[");
-  for(int i = 0; i < arr.length; i++)
+  for (int i = 0; i < arr.length; i++)
     printArray(arr[i]);
   println("]");
 }
 
-void printMatrix(float[][] arr){
+void printMatrix(float[][] arr) {
   print("[");
-  for(int i = 0; i < arr.length; i++)
+  for (int i = 0; i < arr.length; i++)
     printArray(arr[i]);
   println("]");
 }
