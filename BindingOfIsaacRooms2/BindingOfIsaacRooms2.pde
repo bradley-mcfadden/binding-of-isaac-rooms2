@@ -1,3 +1,6 @@
+/**
+  * See README.txt for more information
+*/
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.Iterator;
